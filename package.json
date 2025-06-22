@@ -1,0 +1,24 @@
+{
+  "name": "2025_challkathon_itworks_be",
+  "version": "1.0.0",
+  "description": "Reletter - 교환일기 서비스를 제공하는 웹 서비스",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nooyag8/2025_CHALLKATHON_ItWorks_BE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nooyag8/2025_CHALLKATHON_ItWorks_BE/issues"
+  },
+  "homepage": "https://github.com/nooyag8/2025_CHALLKATHON_ItWorks_BE#readme",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
