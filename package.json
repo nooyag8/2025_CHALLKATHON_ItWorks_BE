@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/nooyag8/2025_CHALLKATHON_ItWorks_BE#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^5.1.0"
   }
 }
