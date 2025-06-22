@@ -13,13 +13,15 @@ app.get('/', (req, res) => {
 
 // ✅ 회원가입 API
 app.post('/users/create', (req, res) => {
-  const { email, name } = req.body;
+  const { email, name, password } = req.body;
 
-  if (!email || !name) {
-    return res.status(400).json({ message: '이메일과 이름은 필수입니다.' });
+  if (!email || !name || !password) {
+    return res.status(400).json({ message: '이메일과 이름, 비밀번호는 필수입니다.' });
   }
 
   console.log('✅ 회원가입 요청:', req.body);
+
+  //TODO: 실제 DB 저장 로직 추가
 
   res.status(201).json({
     message: '회원가입 성공!',
