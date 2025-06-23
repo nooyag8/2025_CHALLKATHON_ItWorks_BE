@@ -2,7 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const User = require("./js/user"); // 사용자 모델 import
-require("./db"); // DB 연결
+const connectDB = require("./config/db"); // DB 연결
+connectDB();
 
 const app = express();
 const PORT = 4000;
