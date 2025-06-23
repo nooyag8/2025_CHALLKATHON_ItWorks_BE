@@ -1,4 +1,4 @@
-require("dotenv").config(); // 상단에 위치
+require("dotenv").config();
 const mongoose = require("mongoose");
 
 const connectDB = async () => {
