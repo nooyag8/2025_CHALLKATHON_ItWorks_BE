@@ -8,6 +8,14 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// 이메일 저장 시 소문자 변환 및 앞 뒤 공백 제거
+userSchema.pre("save", function (next) {
+  if (this.isModified("email")) {
+    this.email = this.email.trim().toLowerCase();
+  }
+  next();
+});
+
 // 저장 전 비밀번호 암호화
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
