@@ -1,15 +1,26 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../../controllers/userController");
-const authMiddleware = require("../../js/auth");
 const { verifyToken } = require("../../js/auth");
 
+// 회원가입
 router.post("/create", userController.createUser);
+
+// 로그인
 router.post("/login", userController.loginUser);
+
+// 로그인 GET 막기
 router.get("/login", userController.loginGetNotAllowed);
-//router.get("/search", authMiddleware, userController.searchUsers);
+
+// 친구 기능 (인증 필요)
 router.get("/search", verifyToken, userController.searchUsers);
 router.post("/friends/request", verifyToken, userController.sendFriendRequest);
 router.post("/friends/accept", verifyToken, userController.acceptFriendRequest);
 router.post("/friends/reject", verifyToken, userController.rejectFriendRequest);
+
+// 마이페이지 (인증 필요)
+router.get("/info", verifyToken, userController.getUserInfo);
+router.patch("/update", verifyToken, userController.updateUser);
+router.delete("/delete", verifyToken, userController.deleteUser);
+
 module.exports = router;
