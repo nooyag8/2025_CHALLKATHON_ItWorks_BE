@@ -1,5 +1,6 @@
-const User = require("../js/user"); // ← 모델 경로 확인 필요
+const User = require("../js/user"); // ✅ 사용자 모델 한 번만 선언
 const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
 
 // 회원가입
 exports.createUser = async (req, res) => {
@@ -57,20 +58,43 @@ exports.loginGetNotAllowed = (req, res) => {
   res.status(405).send("로그인은 POST 요청만 가능합니다");
 };
 
+// 유저 검색 (자기 자신 제외)
 exports.searchUsers = async (req, res) => {
+  console.log("현재 로그인된 사용자:", req.user);
+
   const { keyword } = req.query;
+  const currentUserEmail = req.user?.email?.trim().toLowerCase();
+  const currentUserId = req.user?._id;
+
+  if (!keyword) {
+    return res.status(400).json({ message: "검색어를 입력해주세요." });
+  }
+
   try {
     const users = await User.find(
       {
-        $or: [
-          { name: { $regex: keyword, $options: "i" } },
-          { email: { $regex: keyword, $options: "i" } }
+        $and: [
+          {
+            $or: [
+              { name: { $regex: keyword, $options: "i" } },
+              { email: { $regex: keyword, $options: "i" } }
+            ]
+          },
+          {
+            // 현재 로그인한 사용자의 이메일과 완전히 일치하는 이메일 제외
+            email: { $not: new RegExp(`^${currentUserEmail}$`, "i") }
+          },
+          {
+            _id: { $ne: new mongoose.Types.ObjectId(currentUserId) }
+          }
         ]
       },
       { password: 0 }
     );
+
     res.status(200).json(users);
   } catch (err) {
+    console.error("🔴 친구 검색 오류:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
