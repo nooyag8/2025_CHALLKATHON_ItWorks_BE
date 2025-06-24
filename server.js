@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db"); // DB 연결
 const userRoutes = require("./routes/users/userRoutes");
+const authRoutes = require("./js/auth");
 
 const app = express();
 const PORT = 4000;
@@ -15,6 +16,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/users", userRoutes);
+
+app.use("/users", authRoutes);
 
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
