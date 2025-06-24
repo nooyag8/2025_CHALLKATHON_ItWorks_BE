@@ -1,9 +1,9 @@
-const User = require("../models/User");
+const User = require("../js/user"); // ← 모델 경로 확인 필요
+const bcrypt = require("bcrypt");
 
 // 회원가입
 exports.createUser = async (req, res) => {
   const { email, name, password } = req.body;
-
   if (!email || !password) {
     return res.status(400).json({ message: "이메일, 비밀번호는 필수입니다." });
   }
@@ -30,35 +30,29 @@ exports.createUser = async (req, res) => {
 // 로그인
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
+  const user = await User.findOne({ email });
 
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: "이메일이 존재하지 않습니다." });
-    }
-
-    if (user.password !== password) {
-      return res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
-    }
-
-    // TODO: 비밀번호 암호화, JWT 토큰 발급 등 추후 구현
-
-    res.status(200).json({
-      message: "로그인 성공",
-      user: {
-        email: user.email,
-        name: user.name,
-      },
-      accessToken: "fake-access-token",
-      refreshToken: "fake-refresh-token",
-    });
-  } catch (error) {
-    console.error("❌ 로그인 오류:", error);
-    res.status(500).json({ message: "서버 오류" });
+  if (!user) {
+    return res.status(401).json({ message: "이메일이 존재하지 않습니다." });
   }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
+  }
+
+  res.status(200).json({
+    message: "로그인 성공",
+    user: {
+      email: user.email,
+      name: user.name,
+    },
+    accessToken: "fake-access-token",
+    refreshToken: "fake-refresh-token",
+  });
 };
 
-// GET 로그인 요청 거부
+// 로그인 GET 거절
 exports.loginGetNotAllowed = (req, res) => {
   res.status(405).send("로그인은 POST 요청만 가능합니다");
 };
