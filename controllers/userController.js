@@ -6,6 +6,9 @@ const FriendRequest = require("../js/FriendRequest");
 
 // 회원가입
 exports.createUser = async (req, res) => {
+  console.log("회원가입 API 호출됨:", req.method, req.path);
+  console.log("req.body:", req.body);
+  
   const { email, name, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "이메일, 비밀번호는 필수입니다." });
@@ -48,7 +51,7 @@ exports.loginUser = async (req, res) => {
   const token = jwt.sign(
     { userId: user._id, email: user.email },
     process.env.JWT_SECRET || "secret-key",
-    { expiresIn: "1h" }
+    //{ expiresIn: "1h" }
   );
 
   res.status(200).json({
@@ -192,5 +195,52 @@ exports.rejectFriendRequest = async (req, res) => {
   } catch (err) {
     console.error("❌ 친구 거절 오류:", err);
     res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+// [GET] 내 정보
+exports.getUserInfo = (req, res) => {
+  res.status(200).json({
+    name: req.user.name,
+    email: req.user.email,
+  });
+};
+
+// 마이페이지
+
+// [PATCH] 정보 수정
+exports.updateUser = async (req, res) => {
+  const { name, email } = req.body;
+
+  try {
+    if (email && email !== req.user.email) {
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(400).json({ message: "이미 존재하는 이메일입니다." });
+      }
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      { name, email },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.status(200).json({
+      name: updated.name,
+      email: updated.email,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "정보 수정 실패", error: err.message });
+  }
+};
+
+// [DELETE] 회원 탈퇴
+exports.deleteUser = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.user._id);
+    res.status(200).json({ message: "회원 탈퇴가 완료되었습니다." });
+  } catch (err) {
+    res.status(500).json({ message: "탈퇴 실패", error: err.message });
   }
 };
