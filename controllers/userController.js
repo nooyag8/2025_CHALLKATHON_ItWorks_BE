@@ -128,6 +128,29 @@ exports.sendFriendRequest = async (req, res) => {
   }
 };
 
+//받은 친구 요청 불러오기
+exports.getFriendRequests = async (req, res) => {
+  const currentUserId = req.user.userId;
+
+  try {
+    const requests = await FriendRequest.find({ target: currentUserId })
+      .populate("requester", "name email"); // 이름과 이메일 같이 보내기
+
+    const formatted = requests.map((req) => ({
+      id: req._id,
+      requesterId: req.requester._id,
+      name: req.requester.name,
+      email: req.requester.email,
+    }));
+
+    res.status(200).json(formatted);
+  } catch (err) {
+    console.error("❌ 친구 요청 목록 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+
 // 친구 요청 수락
 exports.acceptFriendRequest = async (req, res) => {
   const currentUserId = req.user.userId;

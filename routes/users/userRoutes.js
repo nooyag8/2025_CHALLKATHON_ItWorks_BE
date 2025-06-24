@@ -14,6 +14,7 @@ router.get("/login", userController.loginGetNotAllowed);
 
 // 친구 기능 (인증 필요)
 router.get("/search", verifyToken, userController.searchUsers);
+router.get("/friends/requests", verifyToken, userController.getFriendRequests);
 router.post("/friends/request", verifyToken, userController.sendFriendRequest);
 router.post("/friends/accept", verifyToken, userController.acceptFriendRequest);
 router.post("/friends/reject", verifyToken, userController.rejectFriendRequest);
