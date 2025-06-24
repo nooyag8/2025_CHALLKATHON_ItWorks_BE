@@ -9,6 +9,7 @@ router.post("/login", userController.loginUser);
 router.get("/login", userController.loginGetNotAllowed);
 //router.get("/search", authMiddleware, userController.searchUsers);
 router.get("/search", verifyToken, userController.searchUsers);
+router.get("/friends/requests", verifyToken, userController.getFriendRequests);
 router.post("/friends/request", verifyToken, userController.sendFriendRequest);
 router.post("/friends/accept", verifyToken, userController.acceptFriendRequest);
 router.post("/friends/reject", verifyToken, userController.rejectFriendRequest);
