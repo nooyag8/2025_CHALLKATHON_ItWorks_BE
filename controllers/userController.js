@@ -6,6 +6,9 @@ const FriendRequest = require("../js/FriendRequest");
 
 // 회원가입
 exports.createUser = async (req, res) => {
+  console.log("회원가입 API 호출됨:", req.method, req.path);
+  console.log("req.body:", req.body);
+  
   const { email, name, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "이메일, 비밀번호는 필수입니다." });
