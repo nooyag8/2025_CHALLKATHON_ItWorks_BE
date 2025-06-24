@@ -56,3 +56,21 @@ exports.loginUser = async (req, res) => {
 exports.loginGetNotAllowed = (req, res) => {
   res.status(405).send("로그인은 POST 요청만 가능합니다");
 };
+
+exports.searchUsers = async (req, res) => {
+  const { keyword } = req.query;
+  try {
+    const users = await User.find(
+      {
+        $or: [
+          { name: { $regex: keyword, $options: "i" } },
+          { email: { $regex: keyword, $options: "i" } }
+        ]
+      },
+      { password: 0 }
+    );
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
