@@ -23,6 +23,6 @@ router.get("/friends/list", verifyToken, userController.getFriendsList);
 // 마이페이지 (인증 필요)
 router.get("/info", verifyToken, userController.getUserInfo);
 router.patch("/update", verifyToken, userController.updateUser);
-router.delete("/delete", verifyToken, userController.deleteUser);
+router.delete("/me", verifyToken, userController.deleteUser);
 
 module.exports = router;
