@@ -339,7 +339,11 @@ exports.getDiariesByGroup = async (req, res) => {
     const query = { group: groupId };
 
     if (date) {
-      query.date = date; // ← 정확히 문자열 매칭
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const nextDayStr = nextDay.toISOString().slice(0, 10);
+
+      query.date = { $gte: date, $lt: nextDayStr };
     }
 
     const diaries = await Diary.find(query)
