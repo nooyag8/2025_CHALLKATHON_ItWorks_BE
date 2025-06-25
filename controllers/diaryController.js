@@ -231,72 +231,65 @@ exports.getDiaryCountByDate = async (req, res) => {
     month = parseInt(month);
 
     const paddedMonth = String(month).padStart(2, "0");
-
-    // 월의 시작일과 다음 월의 시작일을 구함
     const startDateStr = `${year}-${paddedMonth}-01`;
-    const startDate = new Date(startDateStr + "T00:00:00.000Z");
-    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const endDate = new Date(nextMonth + "T00:00:00.000Z");
+    const nextMonth =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
-    // 1) 사용자가 속한 그룹 아이디 목록
+    // 사용자의 그룹만 필터링
     const myGroups = await Group.find({ members: userId }).select("_id");
-    const myGroupIds = myGroups.map(g => g._id);
+    const myGroupIds = myGroups.map((g) => g._id);
 
-    // 2) 해당 월 범위 내, 사용자의 그룹에 속하는 일기 모두 조회
-    // date 필드는 'YYYY-MM-DD' 형태의 문자열이므로 비교 가능하다고 가정
     const diaries = await Diary.find({
       group: { $in: myGroupIds },
-      date: { $gte: startDateStr, $lt: nextMonth }
+      date: { $gte: startDateStr, $lt: nextMonth },
     }).select("date group readBy").lean();
 
-    // 3) 날짜별로 통계 집계
+    // 날짜별 초기 통계
     const statsMap = {};
-
-    // 이번 달 일수 구하기
     const daysInMonth = new Date(year, month, 0).getDate();
-
-    // 초기값 세팅
     for (let day = 1; day <= daysInMonth; day++) {
       const dayStr = `${year}-${paddedMonth}-${String(day).padStart(2, "0")}`;
       statsMap[dayStr] = {
         totalCount: 0,
         unreadCount: 0,
-        groupsSet: new Set(), // 그룹 중복 제거용
+        readCount: 0,
+        groupsSet: new Set(),
       };
     }
 
-    // 일기 데이터 순회하며 집계
-    diaries.forEach(diary => {
-      const dayStr = diary.date;
-      if (!statsMap[dayStr]) {
-        // 만약 범위를 벗어나거나 예외적인 날짜면 무시
-        return;
-      }
-      statsMap[dayStr].totalCount++;
+    // 일기별 통계 처리
+    diaries.forEach((diary) => {
+      const dateStr = diary.date;
+      const stat = statsMap[dateStr];
+      if (!stat) return;
 
-      // 읽지 않은 경우 : 현재 로그인 유저 이메일이 diary.readBy 배열에 없으면
-      if (!diary.readBy || !diary.readBy.includes(userEmail)) {
-        statsMap[dayStr].unreadCount++;
+      stat.totalCount++;
+
+      if (diary.readBy?.includes(userEmail)) {
+        stat.readCount++;
+      } else {
+        stat.unreadCount++;
       }
 
-      // 그룹 id 추가 (중복 제거용 set)
       if (diary.group) {
-        statsMap[dayStr].groupsSet.add(diary.group.toString());
+        stat.groupsSet.add(diary.group.toString());
       }
     });
 
-    // 최종 결과 변환 (groupsSet -> groupCount)
+    // 최종 결과
     const result = {};
     Object.entries(statsMap).forEach(([date, stat]) => {
       result[date] = {
         totalCount: stat.totalCount,
+        readCount: stat.readCount,
         unreadCount: stat.unreadCount,
         groupCount: stat.groupsSet.size,
       };
     });
 
     res.status(200).json(result);
-
   } catch (err) {
     console.error("❌ 날짜별 일기 통계 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -353,6 +346,63 @@ exports.getDiariesByGroup = async (req, res) => {
     res.json(diaries);
   } catch (err) {
     console.error("❌ 그룹 일기 조회 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+// ✅ 그룹별 날짜별 일기 열람/미열람 통계
+exports.getGroupDiaryCountByDate = async (req, res) => {
+  try {
+    const userEmail = req.user?.email;
+    const { groupId } = req.params;
+    let { year, month } = req.query;
+
+    if (!userEmail || !groupId || !year || !month) {
+      return res.status(400).json({ message: "필수 정보가 누락되었습니다." });
+    }
+
+    year = parseInt(year);
+    month = parseInt(month);
+    const paddedMonth = String(month).padStart(2, "0");
+
+    const startDateStr = `${year}-${paddedMonth}-01`;
+    const nextMonth =
+      month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+
+    const diaries = await Diary.find({
+      group: groupId,
+      date: { $gte: startDateStr, $lt: nextMonth },
+    }).select("date readBy");
+
+    const statsMap = {};
+
+    for (let i = 1; i <= new Date(year, month, 0).getDate(); i++) {
+      const dateStr = `${year}-${paddedMonth}-${String(i).padStart(2, "0")}`;
+      statsMap[dateStr] = {
+        totalCount: 0,
+        readCount: 0,
+        unreadCount: 0,
+      };
+    }
+
+    diaries.forEach((diary) => {
+      const dateStr = diary.date;
+      if (!statsMap[dateStr]) return;
+
+      statsMap[dateStr].totalCount++;
+
+      if (diary.readBy && diary.readBy.includes(userEmail)) {
+        statsMap[dateStr].readCount++;
+      } else {
+        statsMap[dateStr].unreadCount++;
+      }
+    });
+
+    res.status(200).json(statsMap);
+  } catch (err) {
+    console.error("❌ 그룹별 일기 통계 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
