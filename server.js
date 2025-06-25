@@ -28,6 +28,7 @@ console.log("✅ User routes registered under /users");
 app.use("/diaries", diaryRoutes);
 console.log("✅ Diary routes registered under /diaries");
 
+// 그룹 라우트 등록
 app.use("/users/groups", groupRoutes);
 
 app.listen(PORT, () => {
