@@ -15,6 +15,6 @@ router.post("/temp", diaryController.saveTemp);
 router.post("/create", diaryController.createDiary);
 
 router.post("/:id/read", verifyToken, diaryController.markAsRead);
-router.get('/count', diaryController.getDiaryCount);
+router.get('/count-by-date', diaryController.getDiaryCountByDate);
 
 module.exports = router;

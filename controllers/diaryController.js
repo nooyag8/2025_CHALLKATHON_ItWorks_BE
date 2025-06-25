@@ -179,12 +179,51 @@ exports.createDiary = async (req, res) => {
   }
 };
 
-exports.getDiaryCount = async (req, res) => {
+exports.getDiaryCountByDate = async (req, res) => {
   try {
-    const totalCount = await Diary.countDocuments({});
-    res.json({ totalCount });
+    const { year, month } = req.query;
+
+    if (!year || !month) {
+      return res.status(400).json({ message: "year와 month는 필수입니다." });
+    }
+
+    // 월 범위 계산
+    const startDate = new Date(`${year}-${month}-01T00:00:00.000Z`);
+    const nextMonth = month === '12'
+      ? `${parseInt(year) + 1}-01-01`
+      : `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`;
+    const endDate = new Date(new Date(nextMonth).getTime() - 1000);
+
+    // aggregation pipeline
+    const counts = await Diary.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate.toISOString().slice(0, 10), $lte: endDate.toISOString().slice(0, 10) }
+        }
+      },
+      {
+        $group: {
+          _id: "$date",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // 해당 월의 일수 구하기
+    const daysInMonth = new Date(year, parseInt(month), 0).getDate();
+
+    // 결과 객체 만들기 (없으면 0)
+    const response = {};
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const found = counts.find(c => c._id === dayStr);
+      response[dayStr] = found ? found.count : 0;
+    }
+
+    res.json(response);
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "총 일기 개수를 가져올 수 없습니다." });
+    res.status(500).json({ message: "서버 에러" });
   }
 };
