@@ -8,7 +8,7 @@ const FriendRequest = require("../js/FriendRequest");
 exports.createUser = async (req, res) => {
   console.log("회원가입 API 호출됨:", req.method, req.path);
   console.log("req.body:", req.body);
-  
+
   const { email, name, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "이메일, 비밀번호는 필수입니다." });
@@ -50,8 +50,7 @@ exports.loginUser = async (req, res) => {
   // JWT 토큰 발급
   const token = jwt.sign(
     { userId: user._id, email: user.email },
-    process.env.JWT_SECRET || "secret-key",
-    //{ expiresIn: "1h" }
+    process.env.JWT_SECRET || "secret-key"
   );
 
   res.status(200).json({
@@ -73,7 +72,7 @@ exports.loginGetNotAllowed = (req, res) => {
 exports.searchUsers = async (req, res) => {
   const { keyword } = req.query;
   const currentUserEmail = req.user?.email?.trim().toLowerCase();
-  const currentUserId = req.user?.userId;
+  const currentUserId = req.user?._id;
 
   if (!keyword) {
     return res.status(400).json({ message: "검색어를 입력해주세요." });
@@ -89,12 +88,8 @@ exports.searchUsers = async (req, res) => {
               { email: { $regex: keyword, $options: "i" } },
             ],
           },
-          {
-            email: { $ne: currentUserEmail },
-          },
-          {
-            _id: { $ne: new mongoose.Types.ObjectId(currentUserId) },
-          },
+          { email: { $ne: currentUserEmail } },
+          { _id: { $ne: new mongoose.Types.ObjectId(currentUserId) } },
         ],
       },
       { password: 0 }
@@ -109,32 +104,48 @@ exports.searchUsers = async (req, res) => {
 
 // 친구 요청 보내기
 exports.sendFriendRequest = async (req, res) => {
-  const requesterId = req.user.userId;
+  const requesterId = req.user._id;
   const { targetId } = req.body;
 
-  if (requesterId === targetId) {
+  if (!targetId) {
+    return res.status(400).json({ message: "targetId가 없습니다." });
+  }
+
+  if (requesterId.toString() === targetId.toString()) {
     return res.status(400).json({ message: "자기 자신에게 요청할 수 없습니다." });
   }
 
   try {
-    const exists = await FriendRequest.findOne({ requester: requesterId, target: targetId });
-    if (exists) return res.status(409).json({ message: "이미 친구 요청을 보냈습니다." });
+    const exists = await FriendRequest.findOne({
+      requester: new mongoose.Types.ObjectId(requesterId),
+      target: new mongoose.Types.ObjectId(targetId),
+    });
 
-    await FriendRequest.create({ requester: requesterId, target: targetId });
+    if (exists) {
+      return res.status(409).json({ message: "이미 친구 요청을 보냈습니다." });
+    }
+
+    await FriendRequest.create({
+      requester: new mongoose.Types.ObjectId(requesterId),
+      target: new mongoose.Types.ObjectId(targetId),
+    });
+
     res.status(201).json({ message: "친구 요청을 보냈습니다." });
   } catch (err) {
-    console.error("❌ 친구 요청 오류:", err);
-    res.status(500).json({ message: "서버 오류" });
+    console.error("❌ 친구 요청 오류:", err.message);
+    res.status(500).json({ message: "서버 오류", error: err.message });
   }
 };
 
-//받은 친구 요청 불러오기
+// 받은 친구 요청 불러오기
 exports.getFriendRequests = async (req, res) => {
-  const currentUserId = req.user.userId;
+  const currentUserId = req.user._id;
 
   try {
-    const requests = await FriendRequest.find({ target: currentUserId })
-      .populate("requester", "name email"); // 이름과 이메일 같이 보내기
+    const requests = await FriendRequest.find({ target: currentUserId }).populate(
+      "requester",
+      "name email"
+    );
 
     const formatted = requests.map((req) => ({
       id: req._id,
@@ -150,10 +161,9 @@ exports.getFriendRequests = async (req, res) => {
   }
 };
 
-
 // 친구 요청 수락
 exports.acceptFriendRequest = async (req, res) => {
-  const currentUserId = req.user.userId;
+  const currentUserId = req.user._id;
   const { requesterId } = req.body;
 
   try {
@@ -178,7 +188,7 @@ exports.acceptFriendRequest = async (req, res) => {
 
 // 친구 요청 거절
 exports.rejectFriendRequest = async (req, res) => {
-  const currentUserId = req.user.userId;
+  const currentUserId = req.user._id;
   const { requesterId } = req.body;
 
   try {
@@ -205,8 +215,6 @@ exports.getUserInfo = (req, res) => {
     email: req.user.email,
   });
 };
-
-// 마이페이지
 
 // [PATCH] 정보 수정
 exports.updateUser = async (req, res) => {
