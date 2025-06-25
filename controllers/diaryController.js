@@ -179,50 +179,12 @@ exports.createDiary = async (req, res) => {
   }
 };
 
-exports.getUnreadSummary = async (req, res) => {
+exports.getDiaryCount = async (req, res) => {
   try {
-    const userId = req.user._id; // 로그인 미들웨어에서 user 정보 주입 가정
-    const { year, month } = req.query;
-
-    if (!year || !month) {
-      return res.status(400).json({ message: "year와 month는 필수입니다." });
-    }
-
-    // 월 범위 계산 (1일 ~ 마지막일)
-    const startDate = new Date(`${year}-${month}-01T00:00:00.000Z`);
-    // 다음 달 1일 - 1초 해서 말일 계산
-    const nextMonth = month === '12' ? `${parseInt(year) + 1}-01-01` : `${year}-${String(parseInt(month) + 1).padStart(2,'0')}-01`;
-    const endDate = new Date(new Date(nextMonth).getTime() - 1000);
-
-    // MongoDB aggregation pipeline
-    const result = await Diary.aggregate([
-      {
-        $match: {
-          date: { $gte: startDate.toISOString().slice(0,10), $lte: endDate.toISOString().slice(0,10) },
-          readBy: { $ne: userId.toString() } // readBy에 userId가 없는 것
-        }
-      },
-      {
-        $group: {
-          _id: "$date",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    // 월의 모든 날짜에 대해 0 포함 결과 생성
-    const daysInMonth = new Date(year, parseInt(month), 0).getDate();
-    const response = {};
-    for(let day=1; day<=daysInMonth; day++){
-      const dayStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const found = result.find(r => r._id === dayStr);
-      response[dayStr] = found ? found.count : 0;
-    }
-
-    res.json(response);
-
+    const totalCount = await Diary.countDocuments({});
+    res.json({ totalCount });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "서버 에러" });
+    res.status(500).json({ message: "총 일기 개수를 가져올 수 없습니다." });
   }
 };
