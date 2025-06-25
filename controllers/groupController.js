@@ -114,3 +114,18 @@ exports.rejectInvite = async (req, res) => {
     res.status(500).json({ message: "거절 실패" });
   }
 };
+
+exports.getMyGroups = async (req, res) => {
+    try {
+      const userId = req.user._id;
+  
+      const groups = await Group.find({ members: userId })
+        .populate("leader", "name")
+        .select("name leader members");
+  
+      res.json(groups);
+    } catch (err) {
+      console.error("❌ 그룹 목록 불러오기 실패:", err);
+      res.status(500).json({ message: "그룹 목록 불러오기 실패" });
+    }
+  };  
