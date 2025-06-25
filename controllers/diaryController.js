@@ -15,7 +15,7 @@ exports.getDiaryByDate = async (req, res) => {
     if (!diaries || diaries.length === 0) {
       return res.status(404).json({ message: "해당 날짜에 일기가 없습니다." });
     }
-    res.json({ diaries });
+    res.status(200).json(diaries);
   } catch (err) {
     console.error("❌ 일기 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -29,11 +29,28 @@ exports.autoSave = (req, res) => {
   res.status(200).json({ message: "자동 저장 완료" });
 };
 
-exports.saveTemp = (req, res) => {
+exports.saveTemp = async (req, res) => {
   const { title, content } = req.body;
-  console.log("🗂 [Temp Save] 제목:", title, "| 내용:", content);
-  currentStatus = "임시 저장됨";
-  res.status(200).json({ message: "임시 저장 완료" });
+
+  try {
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+    const tempDiary = new Diary({
+      title,
+      content,
+      date: today,
+      isTemp: true, // ✅ 임시 저장 표시
+    });
+
+    await tempDiary.save(); // ⬅️ 실제 DB 저장
+
+    console.log("🗂 [Temp Save] 저장 완료:", tempDiary);
+    currentStatus = "임시 저장됨";
+    res.status(200).json({ message: "임시 저장 완료", diary: tempDiary });
+  } catch (err) {
+    console.error("❌ 임시 저장 실패:", err);
+    res.status(500).json({ message: "임시 저장 실패", error: err.message });
+  }
 };
 
 exports.createDiary = async (req, res) => {
