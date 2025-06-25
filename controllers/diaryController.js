@@ -102,16 +102,24 @@ exports.markAsRead = async (req, res) => {
 // ✅ 자동 저장
 exports.autoSave = async (req, res) => {
   const { title, content } = req.body;
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "인증된 사용자만 가능합니다." });
+  }
 
   try {
     const now = new Date();
     const today = now.toISOString().split("T")[0];
 
     const updated = await Diary.findOneAndUpdate(
-      { date: today, isTemp: true },
+      { user: userId, date: today, isTemp: true },
       {
         title,
         content,
+        user: userId,
+        date: today,
+        isTemp: true,
         savedAt: now,
       },
       {
@@ -120,12 +128,12 @@ exports.autoSave = async (req, res) => {
       }
     );
 
-    await updated.save();
     console.log("📝 [Auto-Save] 제목:", title, "| 내용:", content);
     currentStatus = "자동 저장됨";
 
     res.status(200).json({ message: "자동 저장 완료", diary: updated });
   } catch (err) {
+    console.error("❌ 자동 저장 실패:", err);
     res.status(500).json({ message: "자동 저장 실패", error: err.message });
   }
 };
