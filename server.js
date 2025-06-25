@@ -9,6 +9,7 @@ const connectDB = require("./config/db");
 const userRoutes = require("./routes/users/userRoutes");
 const diaryRoutes = require("./routes/diaries/diaryRoutes");
 const groupRoutes = require("./routes/groups/groupRoutes");
+const commentRoutes = require("./routes/comments/commentRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,6 +33,7 @@ app.get("/", (req, res) => {
 app.use("/users", userRoutes); // 사용자 관련 API
 app.use("/users/groups", groupRoutes); // 그룹 관련 API
 app.use("/diaries", diaryRoutes); // 일기 관련 API
+app.use("/diaries", commentRoutes);
 
 // ✅ 로그
 console.log("✅ User routes mounted at /users");
