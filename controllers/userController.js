@@ -1,5 +1,4 @@
 const User = require("../js/user");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const FriendRequest = require("../js/FriendRequest");
@@ -21,7 +20,11 @@ exports.createUser = async (req, res) => {
     }
 
     const user = new User({ email, name, password });
+
+    // ✅ 여기에서 확인
+    console.log("💬 저장 전:", user.password); // 평문 출력
     await user.save();
+    console.log("✅ 저장 후:", user.password); // 해시된 문자열 출력 예상
 
     res.status(201).json({
       message: "회원가입 성공!",
@@ -33,6 +36,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
+
 // 로그인
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -42,12 +46,11 @@ exports.loginUser = async (req, res) => {
     return res.status(401).json({ message: "이메일이 존재하지 않습니다." });
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     return res.status(401).json({ message: "비밀번호가 일치하지 않습니다." });
   }
 
-  // JWT 토큰 발급
   const token = jwt.sign(
     { userId: user._id, email: user.email },
     process.env.JWT_SECRET || "secret-key"
@@ -212,7 +215,7 @@ exports.rejectFriendRequest = async (req, res) => {
   }
 };
 
-// [GET] 내 정보
+// 내 정보
 exports.getUserInfo = (req, res) => {
   res.status(200).json({
     name: req.user.name,
@@ -220,7 +223,7 @@ exports.getUserInfo = (req, res) => {
   });
 };
 
-// [PATCH] 정보 수정
+// 정보 수정
 exports.updateUser = async (req, res) => {
   const { name, email } = req.body;
 
@@ -247,7 +250,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// [DELETE] 회원 탈퇴
+// 회원 탈퇴
 exports.deleteUser = async (req, res) => {
   try {
     await User.findByIdAndDelete(req.user._id);
@@ -257,6 +260,7 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// 친구 목록
 exports.getFriendsList = async (req, res) => {
   const currentUserId = req.user._id;
 
