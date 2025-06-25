@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
 
 // ✅ 라우트 등록
 app.use("/users", userRoutes); // 사용자 관련 API
-app.use("/groups", groupRoutes); // 그룹 관련 API
+app.use("/users/groups", groupRoutes); // 그룹 관련 API
 app.use("/diaries", diaryRoutes); // 일기 관련 API
 
 // ✅ 로그
