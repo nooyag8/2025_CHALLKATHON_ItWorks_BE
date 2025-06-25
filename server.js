@@ -5,8 +5,8 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 
 const userRoutes = require("./routes/users/userRoutes");
-//console.log("✅ userRoutes");
 const diaryRoutes = require("./routes/diaries/diaryRoutes");
+const groupRoutes = require("./routes/groups/groupRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -27,6 +27,8 @@ console.log("✅ User routes registered under /users");
 // 일기 라우트 등록
 app.use("/diaries", diaryRoutes);
 console.log("✅ Diary routes registered under /diaries");
+
+app.use("/users/groups", groupRoutes);
 
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
