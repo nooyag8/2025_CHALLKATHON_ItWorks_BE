@@ -115,11 +115,13 @@ exports.rejectInvite = async (req, res) => {
   }
 };
 
+// ✅ [수정] 내 그룹 목록 조회 - leader와 members 모두 populate
 exports.getMyGroups = async (req, res) => {
   try {
-    console.log("요청한 유저 ID:", req.user._id); // ✅ 이게 실제 ObjectId로 보이는지
-    const groups = await Group.find({ members: req.user._id }).populate("leader", "name");
-    console.log("✅ 찾은 그룹:", groups); // 여기에 배열이 비어 있나요?
+    const groups = await Group.find({ members: req.user._id })
+      .populate("leader", "name")
+      .populate("members", "name email"); // ← 추가됨
+
     res.status(200).json(groups);
   } catch (err) {
     console.error("❌ 내 그룹 목록 조회 실패:", err);
@@ -127,7 +129,7 @@ exports.getMyGroups = async (req, res) => {
   }
 };
 
-// ✅ 특정 그룹 구성원 조회
+// 특정 그룹 구성원 조회
 exports.getGroupMembers = async (req, res) => {
   try {
     const { groupId } = req.params;
