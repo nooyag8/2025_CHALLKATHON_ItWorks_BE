@@ -237,3 +237,34 @@ exports.getDiaryCount = async (req, res) => {
     res.status(500).json({ message: "총 일기 개수를 가져올 수 없습니다." });
   }
 };
+
+// ✅ 일기 상세 조회
+exports.getDiaryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const diary = await Diary.findById(id).populate("group", "name");
+
+    if (!diary) {
+      return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
+    }
+
+    res.status(200).json(diary);
+  } catch (err) {
+    console.error("❌ 일기 상세 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getDiariesByGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const diaries = await Diary.find({ group: groupId })
+      .populate("user", "name")       // 작성자 정보
+      .sort({ date: -1 });            // 최신순
+
+    res.status(200).json(diaries);
+  } catch (err) {
+    console.error("❌ 그룹별 일기 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
