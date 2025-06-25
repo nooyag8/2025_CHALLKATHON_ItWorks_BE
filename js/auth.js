@@ -10,7 +10,9 @@ const verifyToken = async (req, res, next) => {
   
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret-key");
+    console.log("decoded user:", decoded);
     const user = await User.findById(decoded.userId).select("-password");
+    console.log("DB user:", user);
     if (!user) return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
 
     req.user = user;
