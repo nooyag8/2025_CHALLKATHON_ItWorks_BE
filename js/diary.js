@@ -6,6 +6,7 @@ const diarySchema = new mongoose.Schema({
   date: { type: String, required: true }, // "YYYY-MM-DD" 형식
   group: { type: String },
   imageUrl: { type: String },
+  readBy: { type: [String], default: [] },
 });
 
 module.exports = mongoose.model("diaries", diarySchema);

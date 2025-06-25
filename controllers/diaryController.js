@@ -8,16 +8,83 @@ exports.getStatus = (req, res) => {
 
 // 날짜로 일기 조회 함수 추가
 exports.getDiaryByDate = async (req, res) => {
-  const { date } = req.params;
-
   try {
+    const { date } = req.params;
     const diaries = await Diary.find({ date });
+
     if (!diaries || diaries.length === 0) {
       return res.status(404).json({ message: "해당 날짜에 일기가 없습니다." });
     }
-    res.status(200).json(diaries);
+
+    // 👉 group 기준으로 그룹핑
+    const groupMap = new Map();
+
+    diaries.forEach((diary) => {
+      const groupName = diary.group || "기타";
+      if (!groupMap.has(groupName)) {
+        groupMap.set(groupName, {
+          id: groupName, // 그룹명을 id로 사용
+          groupName: groupName,
+          entries: [],
+        });
+      }
+      groupMap.get(groupName).entries.push({
+        id: diary._id,
+        title: diary.title,
+        imageUrl: diary.imageUrl || null,
+        previewText: diary.content.slice(0, 50),
+      });
+    });
+
+    const groupedDiaries = Array.from(groupMap.values());
+
+    res.status(200).json(groupedDiaries);
   } catch (err) {
     console.error("❌ 일기 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.getReadInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const diary = await Diary.findById(id);
+
+    if (!diary) {
+      return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
+    }
+
+    // 예시: readBy 필드가 존재하는 경우
+    res.status(200).json({ readBy: diary.readBy || [] });
+  } catch (err) {
+    console.error("❌ 읽기 정보 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.markAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.user?.email; // JWT 인증 필요
+
+    if (!userEmail) {
+      return res.status(401).json({ message: "인증 실패" });
+    }
+
+    const diary = await Diary.findById(id);
+
+    if (!diary) {
+        return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
+    }
+
+    if (!diary.readBy.includes(userEmail)) {
+      diary.readBy.push(userEmail);
+      await diary.save();
+    }
+
+    res.status(200).json({ message: "읽음 처리 완료", readBy: diary.readBy });
+  } catch (err) {
+    console.error("❌ 읽음 처리 실패:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
