@@ -171,6 +171,10 @@ exports.saveTemp = async (req, res) => {
 // ✅ 일기 생성
 exports.createDiary = async (req, res) => {
   const { title, content, date, group } = req.body;
+  const userId = req.user?._id;
+
+  console.log("🔍 전달된 데이터:", { title, content, date, group });
+  console.log("📌 유저 ID:", userId);
 
   try {
     const newDiary = new Diary({
@@ -178,6 +182,7 @@ exports.createDiary = async (req, res) => {
       content,
       date,
       group,
+      user: userId,
     });
 
     await newDiary.save();
