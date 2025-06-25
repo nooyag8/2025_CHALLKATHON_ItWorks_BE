@@ -106,4 +106,29 @@ router.get("/requests", verifyToken, async (req, res) => {
   }
 });
 
+// ✅ 친구 목록 불러오기
+router.get("/list", verifyToken, async (req, res) => {
+  const currentUserId = req.user.id;
+
+  try {
+    const user = await User.findById(currentUserId)
+      .populate("friends", "name email");
+
+    if (!user) {
+      return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+    }
+
+    const formatted = user.friends.map(friend => ({
+      id: friend._id,
+      name: friend.name,
+      email: friend.email,
+    }));
+
+    res.status(200).json(formatted);
+  } catch (err) {
+    console.error("❌ 친구 목록 불러오기 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+});
+
 module.exports = router;
