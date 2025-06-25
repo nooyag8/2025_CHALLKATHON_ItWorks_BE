@@ -129,3 +129,28 @@ exports.getMyGroups = async (req, res) => {
       res.status(500).json({ message: "그룹 목록 불러오기 실패" });
     }
   };  
+
+exports.getGroupMembers = async (req, res) => {
+  const { groupId } = req.params;
+
+  try {
+    // 그룹이 존재하는지 확인
+    const group = await Group.findById(groupId).populate("members", "name email"); // members는 User ID 배열로 가정
+    if (!group) {
+      return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
+    }
+
+    // 구성원 목록 응답
+    res.status(200).json({
+      members: group.members.map(user => ({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        // 필요한 정보만 추려서 보내기
+      })),
+    });
+  } catch (error) {
+    console.error("🔴 그룹 구성원 조회 오류:", error);
+    res.status(500).json({ message: "서버 오류로 구성원을 불러올 수 없습니다." });
+  }
+};

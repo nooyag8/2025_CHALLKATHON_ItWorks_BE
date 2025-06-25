@@ -9,5 +9,6 @@ router.get("/invitations", verifyToken, groupController.getInvitations);
 router.post("/:groupId/accept", verifyToken, groupController.acceptInvite);
 router.post("/:groupId/reject", verifyToken, groupController.rejectInvite);
 router.get("/list", verifyToken, groupController.getMyGroups);
+router.get("/groups/:groupId/members", verifyToken, groupController.getGroupMembers);
 
 module.exports = router;
