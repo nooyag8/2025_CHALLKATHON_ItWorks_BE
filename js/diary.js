@@ -7,7 +7,12 @@ const diarySchema = new Schema({
   date: String,
   group: {
     type: Schema.Types.ObjectId,
-    ref: "Group", //
+    ref: "Group",
+  },
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
   },
   imageUrl: String,
   readBy: [String],
