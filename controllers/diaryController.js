@@ -186,16 +186,21 @@ exports.createDiary = async (req, res) => {
 // ✅ 월별 일기 수 조회
 exports.getDiaryCountByDate = async (req, res) => {
   try {
-    const { year, month } = req.query;
+    let { year, month } = req.query;
 
     if (!year || !month) {
       return res.status(400).json({ message: "year와 month는 필수입니다." });
     }
 
-    const startDate = new Date(`${year}-${month}-01T00:00:00.000Z`);
-    const nextMonth = month === '12'
-      ? `${parseInt(year) + 1}-01-01`
-      : `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`;
+    year = parseInt(year);
+    month = parseInt(month); // '06' → 6
+
+    const paddedMonth = String(month).padStart(2, '0');
+
+    const startDate = new Date(`${year}-${paddedMonth}-01T00:00:00.000Z`);
+    const nextMonth = month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const endDate = new Date(new Date(nextMonth).getTime() - 1000);
 
     const counts = await Diary.aggregate([
@@ -212,8 +217,9 @@ exports.getDiaryCountByDate = async (req, res) => {
       }
     ]);
 
-    const daysInMonth = new Date(year, parseInt(month), 0).getDate();
+    const daysInMonth = new Date(year, month, 0).getDate(); // month는 1~12 사이의 정수
     const response = {};
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const found = counts.find(c => c._id === dayStr);
@@ -222,7 +228,7 @@ exports.getDiaryCountByDate = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error(error);
+    console.error("❌ 일기 개수 집계 실패:", error);
     res.status(500).json({ message: "서버 에러" });
   }
 };
