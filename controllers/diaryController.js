@@ -95,30 +95,59 @@ exports.markAsRead = async (req, res) => {
 };
 
 // ✅ 자동 저장 처리
-exports.autoSave = (req, res) => {
+exports.autoSave = async (req, res) => {
   const { title, content } = req.body;
-  console.log("📝 [Auto-Save] 제목:", title, "| 내용:", content);
-  currentStatus = "자동 저장됨";
-  res.status(200).json({ message: "자동 저장 완료" });
+
+  try {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    const updated = await Diary.findOneAndUpdate(
+      { date: today, isTemp: true },
+      {
+        title,
+        content,
+        savedAt: now,
+      },
+      {
+        new: true,      // 업데이트된 문서 반환
+        upsert: true,   // 없으면 새로 생성
+      }
+    );
+
+    await diary.save();
+    console.log("📝 [Auto-Save] 제목:", title, "| 내용:", content);
+    currentStatus = "자동 저장됨";
+
+    res.status(200).json({ message: "자동 저장 완료", diary });
+  } catch (err) {
+    res.status(500).json({ message: "자동 저장 실패", error: err.message });
+  }
 };
 
 // ✅ 임시 저장
 exports.saveTemp = async (req, res) => {
   const { title, content } = req.body;
+  const userId = req.user._id; // 미들웨어에서 주입됨
+  const today = new Date().toISOString().split("T")[0];
 
   try {
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const tempDiary = await Diary.findOneAndUpdate(
+      { user: userId, date: today, isTemp: true },
+      {
+        title,
+        content,
+        user: userId,
+        date: today,
+        isTemp: true,
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
 
-    const tempDiary = new Diary({
-      title,
-      content,
-      date: today,
-      isTemp: true,
-    });
-
-    await tempDiary.save();
     console.log("🗂 [Temp Save] 저장 완료:", tempDiary);
-    currentStatus = "임시 저장됨";
     res.status(200).json({ message: "임시 저장 완료", diary: tempDiary });
   } catch (err) {
     console.error("❌ 임시 저장 실패:", err);
