@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const diaryController = require("../../controllers/diaryController");
 const verifyToken = require("../../js/auth"); 
+const upload = require("../../js/upload");
 
 // ✅ 작성 상태 조회
 router.get("/status", diaryController.getStatus);
@@ -31,15 +32,12 @@ router.get("/:id/read", verifyToken, diaryController.getReadInfo);
 router.post("/:id/read", verifyToken, diaryController.markAsRead);
 
 // ✅ 일기 생성
-router.post("/create", verifyToken, diaryController.createDiary);
+router.post("/create", verifyToken,  upload.single("image"), diaryController.createDiary);
 
 // ✅ 임시 저장
 router.post("/temp", verifyToken, diaryController.saveTemp);
 
 // ✅ 자동 저장
 router.post("/auto-save", verifyToken, diaryController.autoSave);
-
-// ✅ 월별 일기 통계 조회
-//router.get("/stats", verifyToken, diaryController.getDiaryStatsByMonth);
 
 module.exports = router;

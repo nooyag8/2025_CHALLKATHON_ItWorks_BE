@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+const multer = require("multer");
 const connectDB = require("./config/db");
 
 const userRoutes = require("./routes/users/userRoutes");
@@ -17,6 +19,9 @@ connectDB();
 // ✅ 미들웨어
 app.use(cors());
 app.use(express.json());
+
+// ✅ 정적 파일 경로 (이미지 접근용)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ✅ 기본 라우트
 app.get("/", (req, res) => {

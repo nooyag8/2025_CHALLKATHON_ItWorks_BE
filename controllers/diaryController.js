@@ -170,26 +170,41 @@ exports.saveTemp = async (req, res) => {
 
 // ✅ 일기 생성
 exports.createDiary = async (req, res) => {
-  const { title, content, date, group } = req.body;
+  const { title, content, date, group, _id } = req.body;
   const userId = req.user?._id;
 
   console.log("🔍 전달된 데이터:", { title, content, date, group });
   console.log("📌 유저 ID:", userId);
+  console.log("📷 업로드 파일:", req.file);
 
   try {
-    const newDiary = new Diary({
-      title,
-      content,
-      date,
-      group,
-      user: userId,
-    });
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    await newDiary.save();
-    console.log("📥 [Create Diary] 저장 완료:", newDiary);
+    let diary;
+
+    if (_id) {
+      diary = await Diary.findByIdAndUpdate(
+        _id,
+        { title, content, date, group, user: userId, imageUrl, isTemp: false },
+        { new: true, runValidators: true }
+      );
+    } else {
+      diary = new Diary({
+        title,
+        content,
+        date,
+        group,
+        user: userId,
+        imageUrl,
+        isTemp: false,
+      });
+      await diary.save();
+    }
+
+    console.log("📥 [Create Diary] 저장 완료:", diary);
     currentStatus = "작성 완료됨";
 
-    res.status(201).json({ message: "일기 생성 완료", diary: newDiary });
+    res.status(201).json({ message: "일기 생성 완료", diary });
   } catch (err) {
     console.error("❌ 저장 실패:", err);
     res.status(500).json({ message: "서버 오류" });
