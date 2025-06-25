@@ -2,42 +2,47 @@ const Diary = require("../js/diary");
 
 let currentStatus = "작성 중";
 
+// ✅ 작성 상태 반환
 exports.getStatus = (req, res) => {
   res.json({ status: currentStatus });
 };
 
-// 날짜로 일기 조회 함수 추가
+// ✅ 날짜로 일기 조회 (그룹명 포함 & 제목 사용)
 exports.getDiaryByDate = async (req, res) => {
   try {
     const { date } = req.params;
-    const diaries = await Diary.find({ date });
+
+    // 그룹 이름 포함하여 불러오기
+    const diaries = await Diary.find({ date }).populate("group", "name");
 
     if (!diaries || diaries.length === 0) {
       return res.status(404).json({ message: "해당 날짜에 일기가 없습니다." });
     }
 
-    // 👉 group 기준으로 그룹핑
+    // 그룹 기준으로 그룹핑
     const groupMap = new Map();
 
     diaries.forEach((diary) => {
-      const groupName = diary.group || "기타";
-      if (!groupMap.has(groupName)) {
-        groupMap.set(groupName, {
-          id: groupName, // 그룹명을 id로 사용
+      const groupId = diary.group?._id?.toString() || "etc";
+      const groupName = diary.group?.name || "기타";
+
+      if (!groupMap.has(groupId)) {
+        groupMap.set(groupId, {
+          id: groupId,
           groupName: groupName,
           entries: [],
         });
       }
-      groupMap.get(groupName).entries.push({
+
+      groupMap.get(groupId).entries.push({
         id: diary._id,
         title: diary.title,
         imageUrl: diary.imageUrl || null,
-        previewText: diary.content.slice(0, 50),
+        previewText: diary.title, // ✅ 제목을 previewText로 사용
       });
     });
 
     const groupedDiaries = Array.from(groupMap.values());
-
     res.status(200).json(groupedDiaries);
   } catch (err) {
     console.error("❌ 일기 조회 실패:", err);
@@ -45,6 +50,7 @@ exports.getDiaryByDate = async (req, res) => {
   }
 };
 
+// ✅ 읽기 정보 조회
 exports.getReadInfo = async (req, res) => {
   try {
     const { id } = req.params;
@@ -54,7 +60,6 @@ exports.getReadInfo = async (req, res) => {
       return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
     }
 
-    // 예시: readBy 필드가 존재하는 경우
     res.status(200).json({ readBy: diary.readBy || [] });
   } catch (err) {
     console.error("❌ 읽기 정보 조회 실패:", err);
@@ -62,19 +67,19 @@ exports.getReadInfo = async (req, res) => {
   }
 };
 
+// ✅ 읽음 처리
 exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const userEmail = req.user?.email; // JWT 인증 필요
+    const userEmail = req.user?.email;
 
     if (!userEmail) {
       return res.status(401).json({ message: "인증 실패" });
     }
 
     const diary = await Diary.findById(id);
-
     if (!diary) {
-        return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
+      return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
     }
 
     if (!diary.readBy.includes(userEmail)) {
@@ -89,6 +94,7 @@ exports.markAsRead = async (req, res) => {
   }
 };
 
+// ✅ 자동 저장 처리
 exports.autoSave = (req, res) => {
   const { title, content } = req.body;
   console.log("📝 [Auto-Save] 제목:", title, "| 내용:", content);
@@ -96,6 +102,7 @@ exports.autoSave = (req, res) => {
   res.status(200).json({ message: "자동 저장 완료" });
 };
 
+// ✅ 임시 저장
 exports.saveTemp = async (req, res) => {
   const { title, content } = req.body;
 
@@ -106,11 +113,10 @@ exports.saveTemp = async (req, res) => {
       title,
       content,
       date: today,
-      isTemp: true, // ✅ 임시 저장 표시
+      isTemp: true,
     });
 
-    await tempDiary.save(); // ⬅️ 실제 DB 저장
-
+    await tempDiary.save();
     console.log("🗂 [Temp Save] 저장 완료:", tempDiary);
     currentStatus = "임시 저장됨";
     res.status(200).json({ message: "임시 저장 완료", diary: tempDiary });
@@ -120,6 +126,7 @@ exports.saveTemp = async (req, res) => {
   }
 };
 
+// ✅ 일기 생성
 exports.createDiary = async (req, res) => {
   const { title, content, date, group } = req.body;
 
@@ -131,7 +138,7 @@ exports.createDiary = async (req, res) => {
       group,
     });
 
-    await newDiary.save();  // ⬅️ 실제 MongoDB 저장
+    await newDiary.save();
     console.log("📥 [Create Diary] 저장 완료:", newDiary);
     currentStatus = "작성 완료됨";
 

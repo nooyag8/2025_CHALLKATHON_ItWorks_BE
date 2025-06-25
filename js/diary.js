@@ -1,12 +1,17 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-const diarySchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  content: { type: String },
-  date: { type: String, required: true }, // "YYYY-MM-DD" 형식
-  group: { type: String },
-  imageUrl: { type: String },
-  readBy: { type: [String], default: [] },
+const diarySchema = new Schema({
+  title: String,
+  content: String,
+  date: String,
+  group: {
+    type: Schema.Types.ObjectId,
+    ref: "Group", //
+  },
+  imageUrl: String,
+  readBy: [String],
+  isTemp: { type: Boolean, default: false },
 });
 
-module.exports = mongoose.model("diaries", diarySchema);
+module.exports = mongoose.model("Diary", diarySchema);
