@@ -39,4 +39,7 @@ router.post("/temp", verifyToken, diaryController.saveTemp);
 // ✅ 자동 저장
 router.post("/auto-save", verifyToken, diaryController.autoSave);
 
+// ✅ 월별 일기 통계 조회
+//router.get("/stats", verifyToken, diaryController.getDiaryStatsByMonth);
+
 module.exports = router;

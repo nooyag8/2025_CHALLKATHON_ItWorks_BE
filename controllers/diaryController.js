@@ -199,6 +199,13 @@ exports.createDiary = async (req, res) => {
 // ✅ 월별 일기 수 조회
 exports.getDiaryCountByDate = async (req, res) => {
   try {
+    const userId = req.user?._id;
+    const userEmail = req.user?.email;
+
+    if (!userId || !userEmail) {
+      return res.status(401).json({ message: "인증된 사용자만 접근 가능합니다." });
+    }
+
     let { year, month } = req.query;
 
     if (!year || !month) {
@@ -206,43 +213,78 @@ exports.getDiaryCountByDate = async (req, res) => {
     }
 
     year = parseInt(year);
-    month = parseInt(month); // '06' → 6
+    month = parseInt(month);
 
-    const paddedMonth = String(month).padStart(2, '0');
+    const paddedMonth = String(month).padStart(2, "0");
 
-    const startDate = new Date(`${year}-${paddedMonth}-01T00:00:00.000Z`);
-    const nextMonth = month === 12
-      ? `${year + 1}-01-01`
-      : `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const endDate = new Date(new Date(nextMonth).getTime() - 1000);
+    // 월의 시작일과 다음 월의 시작일을 구함
+    const startDateStr = `${year}-${paddedMonth}-01`;
+    const startDate = new Date(startDateStr + "T00:00:00.000Z");
+    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const endDate = new Date(nextMonth + "T00:00:00.000Z");
 
-    const counts = await Diary.aggregate([
-      {
-        $match: {
-          date: { $gte: startDate.toISOString().slice(0, 10), $lte: endDate.toISOString().slice(0, 10) }
-        }
-      },
-      {
-        $group: {
-          _id: "$date",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+    // 1) 사용자가 속한 그룹 아이디 목록
+    const myGroups = await Group.find({ members: userId }).select("_id");
+    const myGroupIds = myGroups.map(g => g._id);
 
-    const daysInMonth = new Date(year, month, 0).getDate(); // month는 1~12 사이의 정수
-    const response = {};
+    // 2) 해당 월 범위 내, 사용자의 그룹에 속하는 일기 모두 조회
+    // date 필드는 'YYYY-MM-DD' 형태의 문자열이므로 비교 가능하다고 가정
+    const diaries = await Diary.find({
+      group: { $in: myGroupIds },
+      date: { $gte: startDateStr, $lt: nextMonth }
+    }).select("date group readBy").lean();
 
+    // 3) 날짜별로 통계 집계
+    const statsMap = {};
+
+    // 이번 달 일수 구하기
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // 초기값 세팅
     for (let day = 1; day <= daysInMonth; day++) {
-      const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const found = counts.find(c => c._id === dayStr);
-      response[dayStr] = found ? found.count : 0;
+      const dayStr = `${year}-${paddedMonth}-${String(day).padStart(2, "0")}`;
+      statsMap[dayStr] = {
+        totalCount: 0,
+        unreadCount: 0,
+        groupsSet: new Set(), // 그룹 중복 제거용
+      };
     }
 
-    res.json(response);
-  } catch (error) {
-    console.error("❌ 일기 개수 집계 실패:", error);
-    res.status(500).json({ message: "서버 에러" });
+    // 일기 데이터 순회하며 집계
+    diaries.forEach(diary => {
+      const dayStr = diary.date;
+      if (!statsMap[dayStr]) {
+        // 만약 범위를 벗어나거나 예외적인 날짜면 무시
+        return;
+      }
+      statsMap[dayStr].totalCount++;
+
+      // 읽지 않은 경우 : 현재 로그인 유저 이메일이 diary.readBy 배열에 없으면
+      if (!diary.readBy || !diary.readBy.includes(userEmail)) {
+        statsMap[dayStr].unreadCount++;
+      }
+
+      // 그룹 id 추가 (중복 제거용 set)
+      if (diary.group) {
+        statsMap[dayStr].groupsSet.add(diary.group.toString());
+      }
+    });
+
+    // 최종 결과 변환 (groupsSet -> groupCount)
+    const result = {};
+    Object.entries(statsMap).forEach(([date, stat]) => {
+      result[date] = {
+        totalCount: stat.totalCount,
+        unreadCount: stat.unreadCount,
+        groupCount: stat.groupsSet.size,
+      };
+    });
+
+    res.status(200).json(result);
+
+  } catch (err) {
+    console.error("❌ 날짜별 일기 통계 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
   }
 };
 
