@@ -332,15 +332,23 @@ exports.getDiaryById = async (req, res) => {
 };
 
 exports.getDiariesByGroup = async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const diaries = await Diary.find({ group: groupId })
-      .populate("user", "name")       // 작성자 정보
-      .sort({ date: -1 });            // 최신순
+  const { groupId } = req.params;
+  const { date } = req.query;
 
-    res.status(200).json(diaries);
+  try {
+    const query = { group: groupId };
+
+    if (date) {
+      query.date = date; // ← 정확히 문자열 매칭
+    }
+
+    const diaries = await Diary.find(query)
+      .populate("user", "name")
+      .sort({ date: -1 });
+
+    res.json(diaries);
   } catch (err) {
-    console.error("❌ 그룹별 일기 조회 실패:", err);
+    console.error("❌ 그룹 일기 조회 오류:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
