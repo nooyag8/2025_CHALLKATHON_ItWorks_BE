@@ -18,11 +18,11 @@ router.get("/count-by-date", verifyToken, diaryController.getDiaryCountByDate);
 // ✅ 전체 일기 수 조회
 router.get("/count", diaryController.getDiaryCount);
 
-// ✅ 일기 상세 조회
-router.get("/:id", verifyToken, diaryController.getDiaryById);
-
 // ✅ 특정 그룹의 일기 목록 조회
 router.get("/group/:groupId", verifyToken, diaryController.getDiariesByGroup);
+
+// ✅ 일기 상세 조회
+router.get("/:id", verifyToken, diaryController.getDiaryById);
 
 // ✅ 일기 읽음 정보 조회
 router.get("/:id/read", verifyToken, diaryController.getReadInfo);
