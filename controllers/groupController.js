@@ -116,41 +116,30 @@ exports.rejectInvite = async (req, res) => {
 };
 
 exports.getMyGroups = async (req, res) => {
-    try {
-      const userId = req.user._id;
-  
-      const groups = await Group.find({ members: userId })
-        .populate("leader", "name")
-        .select("name leader members");
-  
-      res.json(groups);
-    } catch (err) {
-      console.error("❌ 그룹 목록 불러오기 실패:", err);
-      res.status(500).json({ message: "그룹 목록 불러오기 실패" });
-    }
-  };  
-
-exports.getGroupMembers = async (req, res) => {
-  const { groupId } = req.params;
-
   try {
-    // 그룹이 존재하는지 확인
-    const group = await Group.findById(groupId).populate("members", "name email"); // members는 User ID 배열로 가정
+    console.log("요청한 유저 ID:", req.user._id); // ✅ 이게 실제 ObjectId로 보이는지
+    const groups = await Group.find({ members: req.user._id }).populate("leader", "name");
+    console.log("✅ 찾은 그룹:", groups); // 여기에 배열이 비어 있나요?
+    res.status(200).json(groups);
+  } catch (err) {
+    console.error("❌ 내 그룹 목록 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+// ✅ 특정 그룹 구성원 조회
+exports.getGroupMembers = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId).populate("members", "name email");
+
     if (!group) {
       return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
     }
 
-    // 구성원 목록 응답
-    res.status(200).json({
-      members: group.members.map(user => ({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        // 필요한 정보만 추려서 보내기
-      })),
-    });
-  } catch (error) {
-    console.error("🔴 그룹 구성원 조회 오류:", error);
-    res.status(500).json({ message: "서버 오류로 구성원을 불러올 수 없습니다." });
+    res.status(200).json({ members: group.members });
+  } catch (err) {
+    console.error("❌ 그룹 구성원 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
   }
 };
