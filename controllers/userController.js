@@ -252,3 +252,26 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: "탈퇴 실패", error: err.message });
   }
 };
+
+exports.getFriendsList = async (req, res) => {
+  const currentUserId = req.user._id;
+
+  try {
+    const user = await User.findById(currentUserId).populate("friends", "name email");
+
+    if (!user) {
+      return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+    }
+
+    const friends = user.friends.map(friend => ({
+      id: friend._id,
+      name: friend.name,
+      email: friend.email,
+    }));
+
+    res.status(200).json(friends);
+  } catch (err) {
+    console.error("❌ 친구 목록 불러오기 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
