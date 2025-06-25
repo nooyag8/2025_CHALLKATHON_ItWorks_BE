@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../../controllers/userController");
-const { verifyToken } = require("../../js/auth");
+const verifyToken = require("../../js/auth");
 
 // 회원가입
 router.post("/create", userController.createUser);
