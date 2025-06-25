@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../../js/auth");
 const groupController = require("../../controllers/groupController");
-console.log("groupController=", groupController);
 
 router.post("/", verifyToken, groupController.createGroup);
 router.post("/:groupId/invite", verifyToken, groupController.inviteUsers);
