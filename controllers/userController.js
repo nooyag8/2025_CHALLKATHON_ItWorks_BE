@@ -79,6 +79,9 @@ exports.searchUsers = async (req, res) => {
   }
 
   try {
+    const currentUser = await User.findById(currentUserId).select("friends");
+    const friendIds = currentUser?.friends || [];
+
     const users = await User.find(
       {
         $and: [
@@ -90,6 +93,7 @@ exports.searchUsers = async (req, res) => {
           },
           { email: { $ne: currentUserEmail } },
           { _id: { $ne: new mongoose.Types.ObjectId(currentUserId) } },
+          { _id: { $nin: friendIds } },
         ],
       },
       { password: 0 }
