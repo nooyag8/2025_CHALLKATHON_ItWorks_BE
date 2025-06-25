@@ -1,4 +1,5 @@
 const Diary = require("../js/diary");
+const Group = require("../js/Group");
 const mongoose = require('mongoose');
 
 let currentStatus = "작성 중";
@@ -8,21 +9,29 @@ exports.getStatus = (req, res) => {
   res.json({ status: currentStatus });
 };
 
-// ✅ 날짜로 일기 조회 (그룹명 포함 & 제목 사용)
+// ✅ 날짜로 일기 조회 (내가 속한 그룹만)
 exports.getDiaryByDate = async (req, res) => {
   try {
     const { date } = req.params;
+    const userId = req.user?._id;
 
-    // 그룹 이름 포함하여 불러오기
-    const diaries = await Diary.find({ date }).populate("group", "name");
+    if (!userId) {
+      return res.status(401).json({ message: "인증된 사용자만 접근 가능합니다." });
+    }
 
-    if (!diaries || diaries.length === 0) {
+    const myGroups = await Group.find({ members: userId }).select("_id name");
+    const myGroupIds = myGroups.map((g) => g._id);
+
+    const diaries = await Diary.find({
+      date,
+      group: { $in: myGroupIds },
+    }).populate("group", "name");
+
+    if (!diaries.length) {
       return res.status(404).json({ message: "해당 날짜에 일기가 없습니다." });
     }
 
-    // 그룹 기준으로 그룹핑
     const groupMap = new Map();
-
     diaries.forEach((diary) => {
       const groupId = diary.group?._id?.toString() || "etc";
       const groupName = diary.group?.name || "기타";
@@ -30,7 +39,7 @@ exports.getDiaryByDate = async (req, res) => {
       if (!groupMap.has(groupId)) {
         groupMap.set(groupId, {
           id: groupId,
-          groupName: groupName,
+          groupName,
           entries: [],
         });
       }
@@ -39,12 +48,12 @@ exports.getDiaryByDate = async (req, res) => {
         id: diary._id,
         title: diary.title,
         imageUrl: diary.imageUrl || null,
-        previewText: diary.title, // ✅ 제목을 previewText로 사용
+        previewText: diary.title,
       });
     });
 
-    const groupedDiaries = Array.from(groupMap.values());
-    res.status(200).json(groupedDiaries);
+    const grouped = Array.from(groupMap.values());
+    res.status(200).json(grouped);
   } catch (err) {
     console.error("❌ 일기 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -56,10 +65,7 @@ exports.getReadInfo = async (req, res) => {
   try {
     const { id } = req.params;
     const diary = await Diary.findById(id);
-
-    if (!diary) {
-      return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
-    }
+    if (!diary) return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
 
     res.status(200).json({ readBy: diary.readBy || [] });
   } catch (err) {
@@ -79,9 +85,7 @@ exports.markAsRead = async (req, res) => {
     }
 
     const diary = await Diary.findById(id);
-    if (!diary) {
-      return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
-    }
+    if (!diary) return res.status(404).json({ message: "일기를 찾을 수 없습니다." });
 
     if (!diary.readBy.includes(userEmail)) {
       diary.readBy.push(userEmail);
@@ -95,7 +99,7 @@ exports.markAsRead = async (req, res) => {
   }
 };
 
-// ✅ 자동 저장 처리
+// ✅ 자동 저장
 exports.autoSave = async (req, res) => {
   const { title, content } = req.body;
 
@@ -111,16 +115,16 @@ exports.autoSave = async (req, res) => {
         savedAt: now,
       },
       {
-        new: true,      // 업데이트된 문서 반환
-        upsert: true,   // 없으면 새로 생성
+        new: true,
+        upsert: true,
       }
     );
 
-    await diary.save();
+    await updated.save();
     console.log("📝 [Auto-Save] 제목:", title, "| 내용:", content);
     currentStatus = "자동 저장됨";
 
-    res.status(200).json({ message: "자동 저장 완료", diary });
+    res.status(200).json({ message: "자동 저장 완료", diary: updated });
   } catch (err) {
     res.status(500).json({ message: "자동 저장 실패", error: err.message });
   }
@@ -129,7 +133,7 @@ exports.autoSave = async (req, res) => {
 // ✅ 임시 저장
 exports.saveTemp = async (req, res) => {
   const { title, content } = req.body;
-  const userId = req.user._id; // 미들웨어에서 주입됨
+  const userId = req.user._id;
   const today = new Date().toISOString().split("T")[0];
 
   try {
@@ -179,6 +183,7 @@ exports.createDiary = async (req, res) => {
   }
 };
 
+// ✅ 월별 일기 수 조회
 exports.getDiaryCountByDate = async (req, res) => {
   try {
     const { year, month } = req.query;
@@ -187,14 +192,12 @@ exports.getDiaryCountByDate = async (req, res) => {
       return res.status(400).json({ message: "year와 month는 필수입니다." });
     }
 
-    // 월 범위 계산
     const startDate = new Date(`${year}-${month}-01T00:00:00.000Z`);
     const nextMonth = month === '12'
       ? `${parseInt(year) + 1}-01-01`
       : `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`;
     const endDate = new Date(new Date(nextMonth).getTime() - 1000);
 
-    // aggregation pipeline
     const counts = await Diary.aggregate([
       {
         $match: {
@@ -209,10 +212,7 @@ exports.getDiaryCountByDate = async (req, res) => {
       }
     ]);
 
-    // 해당 월의 일수 구하기
     const daysInMonth = new Date(year, parseInt(month), 0).getDate();
-
-    // 결과 객체 만들기 (없으면 0)
     const response = {};
     for (let day = 1; day <= daysInMonth; day++) {
       const dayStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -221,9 +221,19 @@ exports.getDiaryCountByDate = async (req, res) => {
     }
 
     res.json(response);
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "서버 에러" });
+  }
+};
+
+// ✅ 전체 일기 수 조회
+exports.getDiaryCount = async (req, res) => {
+  try {
+    const totalCount = await Diary.countDocuments({});
+    res.json({ totalCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "총 일기 개수를 가져올 수 없습니다." });
   }
 };
