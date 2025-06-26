@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const FriendRequest = require("../../js/FriendRequest");
 const User = require("../../js/user");
-const { verifyToken } = require("../../js/auth");
+const verifyToken = require("../../js/auth");
 
 // ✅ 친구 요청 보내기
 router.post("/request", verifyToken, async (req, res) => {
@@ -128,6 +128,22 @@ router.get("/list", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("❌ 친구 목록 불러오기 오류:", err);
     res.status(500).json({ message: "서버 오류" });
+  }
+});
+
+// ✅ 친구 삭제
+router.delete("/:friendId", verifyToken, async (req, res) => {
+  const currentUserId = req.user.id;
+  const { friendId } = req.params;
+
+  try {
+    await User.findByIdAndUpdate(currentUserId, { $pull: { friends: friendId } });
+    await User.findByIdAndUpdate(friendId, { $pull: { friends: currentUserId } });
+
+    res.status(200).json({ message: "친구가 삭제되었습니다." });
+  } catch (err) {
+    console.error("❌ 친구 삭제 오류:", err);
+    res.status(500).json({ message: "삭제 실패", error: err.message });
   }
 });
 

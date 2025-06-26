@@ -145,3 +145,38 @@ exports.getGroupMembers = async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
+exports.removeMember = async (req, res) => {
+  const { groupId, memberId } = req.params;
+
+  try {
+    // 🔒 자기 자신 삭제 방지
+    if (req.user.id === memberId) {
+      return res.status(400).json({ message: "자기 자신은 삭제할 수 없습니다." });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
+    }
+
+    group.members = group.members.filter(id => id.toString() !== memberId);
+    await group.save();
+
+    res.status(200).json({ message: "구성원 삭제 완료" });
+  } catch (err) {
+    console.error("❌ 그룹 구성원 삭제 실패:", err);
+    res.status(500).json({ message: "구성원 삭제 실패" });
+  }
+};
+
+exports.deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    await Group.findByIdAndDelete(groupId);
+    res.status(200).json({ message: "그룹 삭제 완료" });
+  } catch (err) {
+    console.error("❌ 그룹 삭제 실패:", err);
+    res.status(500).json({ message: "그룹 삭제 실패" });
+  }
+};
