@@ -5,6 +5,9 @@ const groupController = require("../../controllers/groupController");
 const diaryController = require("../../controllers/diaryController");
 
 router.post("/", verifyToken, groupController.createGroup);
+router.post("/:groupId/verify-password", verifyToken, groupController.verifyGroupPassword);
+router.patch("/:groupId/password", verifyToken, groupController.updateGroupPassword);
+
 router.post("/:groupId/invite", verifyToken, groupController.inviteUsers);
 router.get("/invitations", verifyToken, groupController.getInvitations);
 router.post("/:groupId/accept", verifyToken, groupController.acceptInvite);
