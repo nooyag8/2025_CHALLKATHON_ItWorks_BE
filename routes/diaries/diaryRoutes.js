@@ -40,4 +40,10 @@ router.post("/temp", verifyToken, diaryController.saveTemp);
 // ✅ 자동 저장
 router.post("/auto-save", verifyToken, diaryController.autoSave);
 
+// ✅ 수정
+router.put('/:id', verifyToken, diaryController.updateDiary);
+
+// ✅ 삭제
+router.delete('/:id', verifyToken, diaryController.deleteDiary);
+
 module.exports = router;

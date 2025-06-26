@@ -340,7 +340,7 @@ exports.getDiariesByGroup = async (req, res) => {
     }
 
     const diaries = await Diary.find(query)
-      .populate("user", "name")
+      .populate("user", "name email")
       .sort({ date: -1 });
 
     res.json(diaries);
@@ -404,5 +404,35 @@ exports.getGroupDiaryCountByDate = async (req, res) => {
   } catch (err) {
     console.error("❌ 그룹별 일기 통계 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
+  }
+};
+
+exports.updateDiary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    const updatedDiary = await Diary.findByIdAndUpdate(
+      id,
+      { title, content },
+      { new: true }  // 수정된 결과 반환
+    );
+
+    if (!updatedDiary) return res.status(404).json({ message: '일기를 찾을 수 없습니다.' });
+
+    res.json(updatedDiary);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteDiary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Diary.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: '일기를 찾을 수 없습니다.' });
+    res.json({ message: '삭제 완료' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
