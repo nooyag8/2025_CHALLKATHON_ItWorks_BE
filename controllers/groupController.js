@@ -1,18 +1,26 @@
 const Group = require("../js/Group");
 const User = require("../js/user");
+const bcrypt = require("bcrypt");
 const Diary = require("../js/diary");
 
 // 그룹 생성
 exports.createGroup = async (req, res) => {
-  const { name } = req.body;
+  const { name, password } = req.body;
   const leaderId = req.user.id;
 
   try {
+    let hashedPassword = null;
+
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10); // 👉 비밀번호가 있을 경우에만 해시
+    }
+
     const group = new Group({
       name,
       leader: leaderId,
       members: [leaderId],
       invitations: [],
+      password: hashedPassword, // 👉 null 또는 해시된 비번
     });
 
     await group.save();
@@ -121,14 +129,21 @@ exports.getMyGroups = async (req, res) => {
   try {
     const groups = await Group.find({ members: req.user._id })
       .populate("leader", "name")
-      .populate("members", "name email"); // ← 추가됨
+      .populate("members", "name email")
+      .lean(); // ← plain object로 변환 (💡 반드시 필요)
 
-    res.status(200).json(groups);
+    const result = groups.map(group => ({
+      ...group,
+      hasPassword: !!group.password, // ✅ 여기 추가
+    }));
+
+    res.status(200).json(result);
   } catch (err) {
     console.error("❌ 내 그룹 목록 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
 
 // 특정 그룹 구성원 조회
 exports.getGroupMembers = async (req, res) => {
@@ -147,6 +162,29 @@ exports.getGroupMembers = async (req, res) => {
   }
 };
 
+exports.verifyGroupPassword = async (req, res) => {
+  const { groupId } = req.params;
+  const { password } = req.body;
+
+  try {
+      const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
+    }
+
+    const isMatch = await bcrypt.compare(password, group.password);
+    if (!isMatch) {
+      return res.status(403).json({ message: "비밀번호가 틀렸습니다." });
+    }
+
+    // 통과 ✅
+    return res.status(200).json({ message: "비밀번호 인증 성공!" });
+  } catch (err) {
+    console.error("비밀번호 확인 오류:", err);
+    return res.status(500).json({ message: "서버 오류" });
+  }
+};
+    
 exports.removeMember = async (req, res) => {
   const { groupId, memberId } = req.params;
 
@@ -170,6 +208,34 @@ exports.removeMember = async (req, res) => {
     res.status(500).json({ message: "구성원 삭제 실패" });
   }
 };
+
+exports.updateGroupPassword = async (req, res) => {
+  const { groupId } = req.params;
+  const { newPassword } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
+    }
+
+    // 권한 확인: 그룹장만 변경 가능
+    if (group.leader.toString() !== userId) {
+      return res.status(403).json({ message: "비밀번호를 변경할 권한이 없습니다." });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    group.password = hashed;
+    await group.save();
+
+    return res.status(200).json({ message: "비밀번호가 변경되었습니다." });
+  } catch (err) {
+    console.error("❌ 비밀번호 변경 오류:", err);
+    return res.status(500).json({ message: "서버 오류" });
+  }
+};
+
 
 exports.deleteGroup = async (req, res) => {
   const { groupId } = req.params;

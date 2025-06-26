@@ -6,6 +6,9 @@ const diaryController = require("../../controllers/diaryController");
 
 // ✅ 그룹 생성
 router.post("/", verifyToken, groupController.createGroup);
+router.post("/:groupId/verify-password", verifyToken, groupController.verifyGroupPassword);
+router.patch("/:groupId/password", verifyToken, groupController.updateGroupPassword);
+
 
 // ✅ 그룹 초대
 router.post("/:groupId/invite", verifyToken, groupController.inviteUsers);
