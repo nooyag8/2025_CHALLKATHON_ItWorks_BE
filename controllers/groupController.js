@@ -187,10 +187,10 @@ exports.verifyGroupPassword = async (req, res) => {
     
 exports.removeMember = async (req, res) => {
   const { groupId, memberId } = req.params;
+  const currentUserId = req.user.id;
 
   try {
-    // 🔒 자기 자신 삭제 방지
-    if (req.user.id === memberId) {
+    if (currentUserId === memberId) {
       return res.status(400).json({ message: "자기 자신은 삭제할 수 없습니다." });
     }
 
@@ -199,6 +199,12 @@ exports.removeMember = async (req, res) => {
       return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
     }
 
+    // 🔒 리더가 아닐 경우 거부
+    if (String(group.leader) !== String(currentUserId)) {
+      return res.status(403).json({ message: "그룹 구성원을 삭제할 권한이 없습니다." });
+    }
+
+    // 삭제
     group.members = group.members.filter(id => id.toString() !== memberId);
     await group.save();
 
