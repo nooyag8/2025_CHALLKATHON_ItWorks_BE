@@ -68,7 +68,7 @@ exports.loginUser = async (req, res) => {
 
 // 로그인 GET 막기
 exports.loginGetNotAllowed = (req, res) => {
-  res.status(405).send("로그인은 POST 요청만 가능합니다");
+  res.status(405).json("로그인은 POST 요청만 가능합니다");
 };
 
 // 친구 검색 (로그인된 유저 제외)
