@@ -43,6 +43,4 @@ console.log("✅ Group routes mounted at /groups");
 console.log("✅ Diary routes mounted at /diaries");
 
 // ✅ 서버 시작
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => {});
