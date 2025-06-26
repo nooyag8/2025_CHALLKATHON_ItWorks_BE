@@ -8,14 +8,18 @@ exports.createGroup = async (req, res) => {
   const leaderId = req.user.id;
 
   try {
-    const hashed = await bcrypt.hash(password, 10); // 👈 비밀번호 해시화
+    let hashedPassword = null;
+
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10); // 👉 비밀번호가 있을 경우에만 해시
+    }
 
     const group = new Group({
       name,
       leader: leaderId,
       members: [leaderId],
       invitations: [],
-      password: hashed, // 👈 해시된 비밀번호 저장
+      password: hashedPassword, // 👉 null 또는 해시된 비번
     });
 
     await group.save();
@@ -124,14 +128,21 @@ exports.getMyGroups = async (req, res) => {
   try {
     const groups = await Group.find({ members: req.user._id })
       .populate("leader", "name")
-      .populate("members", "name email"); // ← 추가됨
+      .populate("members", "name email")
+      .lean(); // ← plain object로 변환 (💡 반드시 필요)
 
-    res.status(200).json(groups);
+    const result = groups.map(group => ({
+      ...group,
+      hasPassword: !!group.password, // ✅ 여기 추가
+    }));
+
+    res.status(200).json(result);
   } catch (err) {
     console.error("❌ 내 그룹 목록 조회 실패:", err);
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
 
 // 특정 그룹 구성원 조회
 exports.getGroupMembers = async (req, res) => {

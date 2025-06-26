@@ -283,3 +283,18 @@ exports.getFriendsList = async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
+// 현재 로그인한 사용자 정보 반환
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "인증되지 않았습니다." });
+    }
+
+    res.status(200).json(user); // password는 이미 verifyToken에서 제외됨
+  } catch (err) {
+    console.error("❌ 사용자 정보 반환 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};

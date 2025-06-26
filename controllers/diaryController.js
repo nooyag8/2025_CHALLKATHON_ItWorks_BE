@@ -19,9 +19,15 @@ exports.getDiaryByDate = async (req, res) => {
       return res.status(401).json({ message: "인증된 사용자만 접근 가능합니다." });
     }
 
-    const myGroups = await Group.find({ members: userId }).select("_id name");
-    const myGroupIds = myGroups.map((g) => g._id);
+    // ✅ 내가 속한 그룹 목록 불러오기 (비밀번호 포함)
+    const myGroups = await Group.find({ members: userId }).select("_id name password");
 
+    const myGroupIds = myGroups.map((g) => g._id);
+    const groupPasswordMap = new Map(
+      myGroups.map((g) => [g._id.toString(), !!g.password]) // ← 문자열 키로 저장
+    );
+
+    // ✅ 해당 날짜의 내가 속한 그룹의 일기들 조회
     const diaries = await Diary.find({
       date,
       group: { $in: myGroupIds },
@@ -31,15 +37,18 @@ exports.getDiaryByDate = async (req, res) => {
       return res.status(404).json({ message: "해당 날짜에 일기가 없습니다." });
     }
 
+    // ✅ 그룹별로 묶기
     const groupMap = new Map();
     diaries.forEach((diary) => {
       const groupId = diary.group?._id?.toString() || "etc";
       const groupName = diary.group?.name || "기타";
+      const hasPassword = groupPasswordMap.get(groupId) || false; // ← 문자열 키 사용
 
       if (!groupMap.has(groupId)) {
         groupMap.set(groupId, {
           id: groupId,
           groupName,
+          hasPassword, // ✅ 프론트로 전달됨
           entries: [],
         });
       }
@@ -59,6 +68,7 @@ exports.getDiaryByDate = async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
 
 // ✅ 읽기 정보 조회
 exports.getReadInfo = async (req, res) => {
