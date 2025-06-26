@@ -19,6 +19,7 @@ router.post("/friends/request", verifyToken, userController.sendFriendRequest);
 router.post("/friends/accept", verifyToken, userController.acceptFriendRequest);
 router.post("/friends/reject", verifyToken, userController.rejectFriendRequest);
 router.get("/friends/list", verifyToken, userController.getFriendsList);
+router.get("/me", verifyToken, userController.getCurrentUser);
 
 // 마이페이지 (인증 필요)
 router.get("/info", verifyToken, userController.getUserInfo);
