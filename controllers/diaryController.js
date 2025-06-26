@@ -242,10 +242,9 @@ exports.getDiaryCountByDate = async (req, res) => {
 
     const paddedMonth = String(month).padStart(2, "0");
     const startDateStr = `${year}-${paddedMonth}-01`;
-    const nextMonth =
-      month === 12
-        ? `${year + 1}-01-01`
-        : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const nextMonthDate = new Date(year, month, 1);  // ✅ month는 1-based 아님
+
+    const nextMonthStr = nextMonthDate.toISOString().slice(0, 10);
 
     // 사용자의 그룹만 필터링
     const myGroups = await Group.find({ members: userId }).select("_id");
@@ -253,13 +252,13 @@ exports.getDiaryCountByDate = async (req, res) => {
 
     const diaries = await Diary.find({
       group: { $in: myGroupIds },
-      date: { $gte: startDateStr, $lt: nextMonth },
+      date: { $gte: startDateStr, $lt: nextMonthStr },
     }).select("date group readBy").lean();
 
-    // 날짜별 초기 통계
+    // 📌 1일부터 말일까지 모두 포함되도록
+    const lastDate = new Date(year, month, 0).getDate();  // ✅ month는 1-based
     const statsMap = {};
-    const daysInMonth = new Date(year, month, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = 1; day <= lastDate; day++) {
       const dayStr = `${year}-${paddedMonth}-${String(day).padStart(2, "0")}`;
       statsMap[dayStr] = {
         totalCount: 0,
@@ -269,7 +268,6 @@ exports.getDiaryCountByDate = async (req, res) => {
       };
     }
 
-    // 일기별 통계 처리
     diaries.forEach((diary) => {
       const dateStr = diary.date;
       const stat = statsMap[dateStr];
@@ -288,16 +286,15 @@ exports.getDiaryCountByDate = async (req, res) => {
       }
     });
 
-    // 최종 결과
     const result = {};
-    Object.entries(statsMap).forEach(([date, stat]) => {
+    for (const [date, stat] of Object.entries(statsMap)) {
       result[date] = {
         totalCount: stat.totalCount,
         readCount: stat.readCount,
         unreadCount: stat.unreadCount,
         groupCount: stat.groupsSet.size,
       };
-    });
+    }
 
     res.status(200).json(result);
   } catch (err) {
