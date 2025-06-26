@@ -1,3 +1,4 @@
+const fs = require("fs");
 const Diary = require("../js/diary");
 const Group = require("../js/Group");
 const mongoose = require('mongoose');
@@ -56,7 +57,7 @@ exports.getDiaryByDate = async (req, res) => {
       groupMap.get(groupId).entries.push({
         id: diary._id,
         title: diary.title,
-        imageUrl: diary.imageUrl || null,
+        imageUrl: diary.imageBase64 || null,
         previewText: diary.title,
       });
     });
@@ -183,19 +184,22 @@ exports.createDiary = async (req, res) => {
   const { title, content, date, group, _id } = req.body;
   const userId = req.user?._id;
 
-  console.log("🔍 전달된 데이터:", { title, content, date, group });
-  console.log("📌 유저 ID:", userId);
-  console.log("📷 업로드 파일:", req.file);
+  let imageBase64 = null;
+
+  // ✅ 파일이 있을 경우 Base64로 변환
+  if (req.file) {
+    const fileBuffer = fs.readFileSync(req.file.path);
+    imageBase64 = fileBuffer.toString("base64");
+    fs.unlinkSync(req.file.path); // 임시 파일 삭제
+  }
 
   try {
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-
     let diary;
 
     if (_id) {
       diary = await Diary.findByIdAndUpdate(
         _id,
-        { title, content, date, group, user: userId, imageUrl, isTemp: false },
+        { title, content, date, group, user: userId, imageBase64, isTemp: false },
         { new: true, runValidators: true }
       );
     } else {
@@ -205,15 +209,13 @@ exports.createDiary = async (req, res) => {
         date,
         group,
         user: userId,
-        imageUrl,
+        imageBase64,
         isTemp: false,
       });
       await diary.save();
     }
 
-    console.log("📥 [Create Diary] 저장 완료:", diary);
     currentStatus = "작성 완료됨";
-
     res.status(201).json({ message: "일기 생성 완료", diary });
   } catch (err) {
     console.error("❌ 저장 실패:", err);
