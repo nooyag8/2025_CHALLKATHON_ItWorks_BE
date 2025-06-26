@@ -283,3 +283,20 @@ exports.getFriendsList = async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 };
+
+// 내 계정 정보 조회 (ID 포함)
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id || req.user._id).select("_id name email");
+    if (!user) return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error("❌ 현재 유저 정보 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+};
