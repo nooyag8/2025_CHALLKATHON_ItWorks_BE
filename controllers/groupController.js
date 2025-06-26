@@ -1,5 +1,6 @@
 const Group = require("../js/Group");
 const User = require("../js/user");
+const Diary = require("../js/diary");
 
 // 그룹 생성
 exports.createGroup = async (req, res) => {
@@ -171,12 +172,26 @@ exports.removeMember = async (req, res) => {
 };
 
 exports.deleteGroup = async (req, res) => {
+  const { groupId } = req.params;
+  const userId = req.user._id;
+
   try {
-    const { groupId } = req.params;
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "그룹을 찾을 수 없습니다." });
+
+    if (String(group.leader) !== String(userId)) {
+      return res.status(403).json({ message: "그룹 삭제 권한이 없습니다." });
+    }
+
+    // ✅ 그룹에 속한 모든 일기 삭제
+    await Diary.deleteMany({ group: groupId });
+
+    // ✅ 그룹 삭제
     await Group.findByIdAndDelete(groupId);
-    res.status(200).json({ message: "그룹 삭제 완료" });
+
+    res.status(200).json({ message: "그룹과 일기가 모두 삭제되었습니다." });
   } catch (err) {
     console.error("❌ 그룹 삭제 실패:", err);
-    res.status(500).json({ message: "그룹 삭제 실패" });
+    res.status(500).json({ message: "서버 오류" });
   }
 };
